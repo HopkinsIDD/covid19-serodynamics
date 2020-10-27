@@ -1,0 +1,1292 @@
+---
+title: "Generation of Figures and Tables for the Supplement"
+output:
+  word_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE,message = FALSE,warning = FALSE)
+knitr::opts_knit$set(root.dir=here::here())
+```
+
+```{r}
+source("source/utils.R")
+reload_source()
+```
+
+
+*Figure S1: Number of PCR positive cases with a sample taken during each week since symptom onset.*
+One individual with one observation was missing a severity index. Six samples coming from three people were missing the date of symptom onset.
+
+```{r, fig.width = 7}
+
+
+cases %>%  
+                #week
+                mutate(week=factor(cut(dos,c(-1,seq(7,126,7)),
+                                        labels=1:18
+                                        )),
+                        # week=as.character(week),
+                        # week=ifelse(is.na(week),"Missing",week),
+                        week=factor(week,levels=c(1:18))
+                        ) %>% distinct(id,week,Severity2) %>%
+                filter(!is.na(week))%>%
+                filter(!is.na(Severity2))%>%
+                group_by(week,Severity2) %>%
+                summarize(count=n())  %>%
+                right_join(expand(.,Severity2,week))%>%
+                ggplot(aes(x=week,y=count))+
+                geom_col(aes(fill=factor(Severity2)),
+                         position = "dodge",
+                         col="black")+
+                theme_bw()+
+                scale_fill_brewer(name="Severity",
+                                  palette = "YlOrRd")+
+                xlab("Week since symptom onset")+
+                ylab("Cases")
+
+```
+
+
+\newpage
+
+
+*Figure S2. Smooth average measurements of IgG, IgM, and IgA against SARS-CoV-2 spike protein receptor binding domain among PCR positive cases across time.*
+
+Limit of detection was artificially set at 0.3 for IgM and IgG to match that of IgA. Points were jittered horizontally. A) All cases  B) cases categorized by clinical  severity
+
+```{r, fig.width = 7,fig.height=9}
+
+smoothf1 <- serodata %>% filter(cohort=="case") %>%
+                select(sample,IgG,IgA,IgM, dos)%>%
+                gather(biomarker,value,-c(sample,dos))%>%
+                mutate(value=ifelse(value<0.3,0.3,value))%>%
+                filter(!is.na(value)) %>%
+                filter(!is.na(dos)) %>%
+                
+                
+                ggplot(aes(x=dos,y=value,col=biomarker))+
+                geom_smooth(aes(fill=biomarker),
+                            method="loess",
+                            se=FALSE,
+                            fullrange = TRUE,
+                            xseq = seq(0,100, length=200)
+                            )+
+                geom_point(alpha=0.2,height = 0,shape=16)+
+                # geom_rug(alpha=0.05,col="black",sides="b",position = "jitter") +
+                scale_color_brewer("Isotype", palette = "Dark2")+
+                scale_fill_brewer("Isotype",palette = "Dark2")+
+                scale_x_continuous(name="Days since symptom onset",
+                                   breaks = seq(0,126,14),
+                                   # labels=seq(0,18,1),
+                                   limits= c(0,126)
+
+                                   )+
+                scale_y_continuous(name=,"\u03BCg/mL",
+                                   breaks = c(0.1,10,1000),
+                                   labels = c(0.1,10,1000),
+                                   trans="log10",
+                                   )+
+                theme_bw()+
+                theme(panel.grid.minor =  element_blank(),
+                      legend.position = "bottom")
+
+
+
+smoothf2 <- serodata %>% filter(cohort=="case") %>%
+                mutate(Severity2=factor(Severity2))%>%
+                select(id,dos,IgG,IgM,IgA,
+                       Severity2) %>%
+                gather(isotype,value,-c(id,dos,Severity2)) %>%
+                
+                filter(!is.na(value)) %>%
+                filter(!is.na(dos))%>%
+                filter(!is.na(Severity2))%>%
+                filter(Severity2!="Not Hospitalized") %>%
+                mutate(value=ifelse(value<0.3,0.3,value))%>%
+
+                
+                ggplot(aes(x=dos,y=value,col=Severity2,
+                           fill=Severity2))+
+                geom_point(alpha=0.1,shape=16)+
+                geom_smooth(
+                            method = "loess",
+                            se=FALSE,
+                            fullrange = TRUE,
+                            xseq = seq(0,100, length=200)
+                            )+
+                # geom_line(aes(group=id),alpha=0.2)+
+                scale_color_manual("Severity",
+                                   values = brewer.pal(n = 4,
+                                                       name="YlOrRd")[2:4])+
+                scale_fill_manual("Severity",
+                                  values = brewer.pal(n = 4,
+                                                       name ="YlOrRd")[2:4])+
+                scale_x_continuous(name="Days since symptom onset",
+                                   breaks = seq(0,126,28),
+                                   # labels=seq(0,18,2),
+                                   limits= c(0,126)
+
+                                   )+
+                scale_y_continuous(name=,"\u03BCg/mL",
+                                   breaks = c(0.1,10,1000),
+                                   labels = c(0.1,10,1000),
+                                   trans="log10",
+                                   )+
+                facet_wrap(.~isotype,ncol=3)+
+                theme_bw()+
+                theme(panel.grid.minor =  element_blank(),
+                      legend.position = "bottom")
+
+smoothf3 <- serodata %>% filter(cohort=="case") %>%
+                mutate(immunosuppressed=factor(immunosuppressed,
+                                               labels = c("Not Immunosuppressed",
+                                                          "Immunosuppressed")
+                                               ))%>%
+                select(id,dos,IgG,IgM,IgA,
+                       immunosuppressed) %>%
+                gather(isotype,value,-c(id,dos,immunosuppressed)) %>%
+                
+                filter(!is.na(value)) %>%
+                filter(!is.na(dos))%>%
+                filter(!is.na(immunosuppressed))%>%
+                mutate(value=ifelse(value<0.3,0.3,value))%>%
+
+                
+                ggplot(aes(x=dos,y=value,col=immunosuppressed,
+                           fill=immunosuppressed))+
+                geom_point(alpha=0.1,shape=16)+
+                geom_smooth(
+                            method = "loess",
+                            se=FALSE,
+                            fullrange = TRUE,
+                            xseq = seq(0,100, length=200)
+                            )+
+                # geom_line(aes(group=id),alpha=0.2)+
+                scale_color_manual("",values= c("grey50","blue"))+
+                scale_fill_manual("",values= c("grey50","blue"))+
+                scale_x_continuous(name="Days since symptom onset",
+                                   breaks = seq(0,126,28),
+                                   # labels=seq(0,18,2),
+                                   limits= c(0,126)
+
+
+                                   )+
+                scale_y_continuous(name=,"\u03BCg/mL",
+                                   breaks = c(0.1,10,1000),
+                                   labels = c(0.1,10,1000),
+                                   trans="log10",
+                                   )+
+                facet_wrap(.~isotype,ncol=3)+
+                theme_bw()+
+                theme(panel.grid.minor =  element_blank(),
+                      legend.position = "bottom")
+
+
+
+plot_grid(smoothf1,smoothf2,smoothf3,
+          ncol=1,labels=c("A","B","C"),
+          rel_heights = c(1.5,1,1))
+
+
+
+```
+
+\newpage
+
+*Figure S3. Individual trajectories for 16 randomly selected individuals with 4 or more measurements.* Patient ID numbers are shown in greys boxes.
+
+```{r, fig.width = 7,fig.height= 8}
+
+ids <- unique(cases$id)
+
+
+set.seed(2234)
+
+measurements<- cases %>% group_by(id) %>%
+                summarize(count=n()) %>%
+                arrange(count) %>%
+                filter(count>=4) %>%
+                distinct(id)
+
+
+# samp <- measurements$id[1:20]
+samp<- sample(measurements$id,16)
+
+# cases %>%       filter(id %in% samp) %>%
+#                 select(id,dos,IgG,IgM,IgA) %>%
+#                 gather(Isotype,ugpmL,-c(id,dos))%>%
+#                 filter(!is.na(ugpmL))%>%
+#                 ggplot(aes(x=dos,y=ugpmL,group=id))+
+#                 geom_point(alpha=0.5)+
+#                 geom_line(alpha=0.5)+
+#                 facet_wrap(Isotype~.,ncol=1)+
+#                 xlab("Days since symptom onset")+
+#                 ylab("\u03BCg/mL")+
+#                 scale_color_brewer( palette = "Dark2")+
+#                 scale_x_continuous(breaks = c(seq(0,150,14)))+
+#                 scale_y_continuous(breaks = c(0.1,10,1000),
+#                                    labels = c(0.1,10,1000),
+#                                    trans="log10",limits = c(0.01,1200))+
+#                 theme_bw()+
+#                 theme(panel.grid.minor = element_blank())
+
+cases %>% #filter(immunosuppressed ==1) %>%
+      filter(id %in% samp) %>%
+                select(id,dos,IgG,IgM,IgA) %>%
+                gather(Isotype,ugpmL,-c(id,dos))%>%
+                filter(!is.na(ugpmL))%>%
+                ggplot(aes(x=dos,y=ugpmL,col=Isotype))+
+                geom_point()+
+                geom_line()+
+                facet_wrap(as.numeric(id)~.,ncol=4)+
+                xlab("Days since symptom onset")+
+                ylab("\u03BCg/mL")+
+                scale_color_brewer( palette = "Dark2")+
+                scale_x_continuous(breaks = seq(0,126,14))+
+                scale_y_continuous(breaks = c(0.1,10,1000),
+                                   labels = c(0.1,10,1000),
+                                   trans="log10",limits = c(0.01,1200))+
+                theme_bw()+
+                theme(panel.grid.minor = element_blank())
+
+
+
+
+
+```
+
+\newpage
+
+
+*Table S1. Predictive accuracy of multiple isotypes for classifying controls and cases over time since symptom onset.*
+
+Random forest models were used to calculate cvAUC. The isotype cut-offs chosen for calculating sensitivity were the maximum value found among pre-pandemic controls (IgG: 0.57, IgM: 2.63, IgA: 2.02). Samples with measurements above at least one cut-off were classified as cases.
+
+
+```{r, fig.width=10,fig.height=10}
+
+####### calculate cv for random forest models-----------------------
+
+# ## Random Forest Models
+# ntrees <- 1000
+# k <- 10
+# # wcutofflevels<- c(#"All Cases",
+# #                   ">7 days", ">14 days",">21 days", ">28 days"
+# #                   )
+# 
+# # for each week, fit random forest models with cross-validation
+# set.seed(262340)
+# # weeks <- levels(predData$week)
+# cv_roc_rfs2 <- vector("list",length=16)
+# 
+# formulae <- c(factor(case)~IgM+IgA,
+#            factor(case)~IgM+IgG,
+#            factor(case)~IgA+IgG,
+#            factor(case)~IgM+IgA+IgG)
+# 
+# for(f in 1:4 ){
+# 
+#   print(formulae[f])
+# 
+# for (w in 1:4){
+# 
+#   index <- 4*(f-1)+w
+# 
+#     #week category
+#     cv_roc_rfs2[[index]]$week <- levels(predData$week)[w]
+# 
+#     #fit random forest model
+#                 tmp<- predData %>%
+#                     filter(week==levels(predData$week)[w]|cohort=="prepandemic") %>%
+#                     select(id,case,IgM,IgA,IgG) %>%
+#                     cv_rf_model(., formulae[[f]],
+#                                 #factor(case)~IgM+IgA+IgG,
+#                                 k=k,ntrees=ntrees)
+# 
+#     cv_roc_rfs2[[index]]$model<- tmp
+#     cv_roc_rfs2[[index]]$formula<-formulae[[f]]
+# 
+#     cvAUC <- tmp[[1]]
+#     preds <- tmp[[3]]
+#     truths <- tmp[[2]]
+#     imps <- tmp[[4]]
+# 
+#     #make ROC curve
+#     cv_roc_rfs2[[index]]$cvAUC<- anotcvAUC <- paste0(#"cvAUC: ",
+#                                    sprintf("%.2f",round(cvAUC$cvAUC,2)),
+#                                    " (",sprintf("%.2f",round(cvAUC$ci1,2)),"-",
+#                                    sprintf("%.2f",round(cvAUC$ci2,2)),")"
+#                                    )
+# 
+#     cv_roc_rfs2[[index]]$ROC<-make_rocs(preds,split(truths$truth,truths$fold),
+#                                     length(preds),title="",
+#                                     ribbon=FALSE,annot_auc = FALSE)[[1]]+
+#      ggtitle(paste(levels(predData$week)[w]))+
+#      annotate("text",x=0.5,y=0.1,label=anotcvAUC)
+# 
+#     #make ROC curve and importance graph combined
+#     cv_roc_rfs2[[index]]$fullplot<- make_roc_varimp_plot(preds,split(truths$truth,truths$fold),imps,
+#              my_title="",
+#              sub=TRUE,ribbon=FALSE,annot_auc=FALSE)+
+#     ggtitle(paste(levels(predData$week)[w]))
+# 
+# }
+# }
+
+
+# write_rds(cv_roc_rfs2,"generated_data/cv_roc_rfs2.rds")
+cv_roc_rfs2<- read_rds("generated_data/cv_roc_rfs2.rds")
+
+
+
+RFcvAUCdf <- NULL
+
+for(i in 1:16){
+  
+            cvtmp<- data.frame(
+                  formula=as.character(cv_roc_rfs2[[i]]$formula)[3],
+                  week=cv_roc_rfs2[[i]]$week,
+                  cvAUC=cv_roc_rfs2[[i]]$cvAUC
+                     )
+
+            RFcvAUCdf<- bind_rows(RFcvAUCdf,cvtmp)
+  
+}
+
+
+
+
+```
+
+```{r}
+####### get sensitivity for multiple biomarkers-----------------------
+
+
+
+# bootdf2 <- data.frame()
+# 
+# for (w in 1:4){
+# 
+# 
+#   cat("Week:",levels(predData$week)[w],"\n")
+# 
+#                   cosGA <- predData %>%
+#                           filter(week==levels(predData$week)[w]) %>%
+#                                   double.bootstrapSensSpec(.,
+#                                          biomarker1="IgG",
+#                                          threshold1=0.57,
+#                                          biomarker2="IgA",
+#                                          threshold2=2.02,
+#                                         col_of_interest = "case"
+#                   ) %>% mutate(week=levels(predData$week)[w])
+# 
+# 
+#                   cosGM <- predData %>%
+#                           filter(week==levels(predData$week)[w]) %>%
+#                                   double.bootstrapSensSpec(.,
+#                                          biomarker1="IgG",
+#                                          threshold1=0.57,
+#                                          biomarker2="IgM",
+#                                          threshold2=2.63,
+#                                         col_of_interest = "case"
+#                   ) %>% mutate(week=levels(predData$week)[w])
+# 
+#                   cosAM <- predData %>%
+#                           filter(week==levels(predData$week)[w]) %>%
+#                                   double.bootstrapSensSpec(.,
+#                                          biomarker1="IgA",
+#                                          threshold1=2.02,
+#                                          biomarker2="IgM",
+#                                          threshold2=2.63,
+#                                         col_of_interest = "case"
+#                   ) %>% mutate(week=levels(predData$week)[w])
+# 
+#                   cosGAM <- predData %>%
+#                           filter(week==levels(predData$week)[w]) %>%
+#                                   double.bootstrapSensSpec(.,
+#                                          biomarker1="IgA",
+#                                          threshold1=2.02,
+#                                          biomarker2="IgM",
+#                                          threshold2=2.63,
+#                                          biomarker3="IgG",
+#                                          threshold3=0.57,
+#                                         col_of_interest = "case"
+#                   ) %>% mutate(week=levels(predData$week)[w])
+# 
+# 
+#                   bootdf2 <- bind_rows(bootdf2,cosGA,cosGM,
+#                                        cosAM,cosGAM)
+# 
+# }
+
+
+# write_rds(bootdf2,"generated_data/doublemarker_sensitivity.rds")
+bootdf2<- read_rds("generated_data/doublemarker_sensitivity.rds")
+
+
+```
+
+
+```{r}
+
+####### Create table with cvAUC and sensitivity-------------
+
+
+#2 or more cutoffs
+final2 <- bootdf2 %>% mutate(algorithm= ifelse(is.na(biomarker3),
+                                        paste(biomarker1,">",threshold1,"or",
+                                        biomarker2,">",threshold2),
+                                        
+                                        paste(biomarker1,">",threshold1,"or",
+                                        biomarker2,">",threshold2, "or",
+                                        biomarker3,">",threshold3))) %>%
+                group_by(algorithm,week) %>%
+                summarize(avg=mean(sens),
+                          lower=quantile(sens,0.025),
+                          upper=quantile(sens,0.975))%>%
+                mutate(CI=paste0(sprintf("%.2f",avg)," (",
+                            sprintf("%.2f",lower),"-",
+                            sprintf("%.2f",upper),")")) %>%
+                              select(algorithm, week, CI)%>%
+                ungroup()
+
+                       
+
+
+final3 <- final2%>%
+                mutate(formula = recode(algorithm,
+                                        "IgA > 2.02 or IgM > 2.63 or IgG > 0.57"="IgM + IgA + IgG",
+                                        "IgG > 0.57 or IgM > 2.63"="IgM + IgG",
+                                        "IgG > 0.57 or IgA > 2.02"="IgA + IgG",
+                                        "IgA > 2.02 or IgM > 2.63"="IgM + IgA"))%>%
+                left_join(RFcvAUCdf,by=c("formula","week")) %>%
+                mutate(formula=factor(formula,
+                                   levels=c(
+                                     "IgA + IgG",
+                                     "IgM + IgG",
+                                     "IgM + IgA",
+                                     "IgM + IgA + IgG"
+                                     )))%>%
+            mutate(week=factor(week,levels=levels(predData$week)))%>%
+            arrange(formula,week)%>%
+            select(formula,week,cvAUC,CI) %>%
+                rename(
+                  Isotypes=formula,
+                `Days since symptom onset`=week,
+                `cvAUC (95% CI)`= cvAUC,
+                `Sensitivity (95% CI)`= CI,
+
+                )
+
+final3 %>% flextable() %>%
+                merge_v(j=~Isotypes) %>%
+                valign(j=~Isotypes,valign = "top")%>%
+                autofit() #%>%
+    # print(., preview = "docx")
+
+
+```
+
+
+\newpage
+
+
+*Figure S4. Measurements of IgG, IgM, and IgA against SARS-CoV-2 spike protein receptor binding domain among pre-pandemic controls and symptomatic PCR positive cases.* 
+
+Black dashed line is at 0.57 ug/mL for IgG, 2.63 ug/mL for IgM, and 2.02 ug/mL for IgA.
+
+
+```{r, fig.width = 7,fig.height=7.5}
+doublescatter <- predData%>% mutate(new = paste(cohort,week)) %>%
+                mutate(cohort=recode(cohort,
+                                     "prepandemic" = "Pre-pandemic control",
+                                     "case"="PCR-positive case"))
+
+
+
+p1 <- doublescatter%>% filter(cohort=="Pre-pandemic control") %>%
+                ggplot(aes(x=IgG,y=IgM,col=dos))+
+                scale_x_continuous(trans="log10",limits = c(0.01,1.0),
+                                   breaks = c(0.01,0.1,1),
+                                   labels = c(0.01,0.1,1))+
+                geom_point(alpha=0.3,shape=16) +
+                facet_wrap(.~cohort,nrow=1)+
+                geom_vline(xintercept = 0.57, lty=2)+
+                geom_hline(yintercept = 2.63, lty=2)+
+                scale_color_viridis("Days",alpha=0.5)+
+                theme_bw()+
+                scale_y_continuous(breaks = c(0.1,1,10,100,1000),
+                                   labels = c(0.1,1,10,100,1000),
+                                   trans="log10",limits = c(0.1,1200))
+
+p2<- doublescatter%>% filter(cohort=="Pre-pandemic control") %>%
+                ggplot(aes(x=IgG,y=IgA,col=dos))+
+                scale_x_continuous(trans="log10",limits = c(0.01,1.0),
+                                   breaks = c(0.01,0.1,1),
+                                   labels = c(0.01,0.1,1))+
+                geom_point(alpha=0.3,shape=16) + facet_wrap(.~cohort,nrow=1)+
+                geom_vline(xintercept = 0.57, lty=2)+
+                geom_hline(yintercept = 2.02, lty=2)+
+
+                scale_color_viridis("Days",alpha=0.5)+
+                theme_bw()+
+                scale_y_continuous(breaks = c(0.1,1,10,100,1000),
+                                   labels = c(0.1,1,10,100,1000),
+                                   trans="log10",limits = c(0.1,1200))
+
+p3 <- doublescatter%>% filter(cohort=="PCR-positive case") %>%
+                ggplot(aes(x=IgG,y=IgM,col=dos))+
+                scale_x_continuous(trans="log10",
+                                   breaks = c(0.1,1,10,100,1000),
+                                   labels = c(0.1,1,10,100,1000))+
+                geom_point(shape=16) + facet_wrap(.~cohort,nrow=1)+
+                geom_vline(xintercept = 0.57, lty=2)+
+                geom_hline(yintercept = 2.63, lty=2)+
+                scale_color_viridis("Days",alpha=0.5)+
+                theme_bw()+
+                scale_y_continuous(breaks = c(0.1,1,10,100,1000),
+                                   labels = c(0.1,1,10,100,1000),
+                                   trans="log10",limits = c(0.1,1200))
+
+p4<- doublescatter%>% filter(cohort=="PCR-positive case") %>%
+                ggplot(aes(x=IgG,y=IgA,col=dos))+
+                scale_x_continuous(trans="log10",breaks = c(0.1,1,10,100,1000),
+                                   labels = c(0.1,1,10,100,1000))+
+                geom_point(shape=16) + facet_wrap(.~cohort,nrow=1)+
+                geom_vline(xintercept = 0.57, lty=2)+
+                geom_hline(yintercept = 2.02, lty=2)+
+
+                scale_color_viridis("Days",alpha=0.5)+
+                theme_bw()+
+                scale_y_continuous(breaks = c(0.1,1,10,100,1000),
+                                   labels = c(0.1,1,10,100,1000),
+                                   trans="log10",limits = c(0.1,1200))
+
+
+plot_grid(
+plot_grid(p1,p2,nrow = 2,align = "v"),
+plot_grid(p3,p4,nrow = 2,align = "v"),ncol=2,align="h",
+  rel_widths = c(1,2))
+
+#%>%
+  # ggsave(filename="figures/figure4.pdf",plot=.,device="pdf",
+  #        width=8,height = 7,units="in")
+# p1 <- predData%>% mutate(new = paste(cohort,week)) %>%
+#                 mutate(cohort=recode(cohort,
+#                                      "prepandemic" = "Pre-pandemic control",
+#                                      "case"="PCR-positive case"
+#                                      
+#                                      ))%>%
+#                 
+#                 ggplot(aes(x=IgG,y=IgM,col=dos))+
+#                 scale_y_continuous(trans="log10")+
+#                 scale_x_continuous(trans="log10")+
+#                 geom_point() + facet_wrap(.~cohort,nrow=1)+
+#                 geom_vline(xintercept = 0.5, lty=2)+
+#                 scale_color_viridis("Days",alpha=0.5)+
+#                 theme_bw()
+# 
+# p2<- predData%>% mutate(new = paste(cohort,week)) %>%
+#                 mutate(cohort=recode(cohort,
+#                                      "prepandemic" = "Pre-pandemic control",
+#                                      "case"="PCR-positive case"
+#                                      
+#                                      ))%>%
+#                 ggplot(aes(x=IgG,y=IgA,col=dos))+
+#                 scale_y_continuous(trans="log10")+
+#                 scale_x_continuous(trans="log10")+
+#                 geom_point() + facet_wrap(.~cohort,nrow=1)+
+#                 geom_vline(xintercept = 0.5, lty=2)+
+#                 geom_hline(yintercept = 2.02, lty=2)+
+# 
+#                 scale_color_viridis("Days",alpha=0.5)+
+#                 theme_bw()
+# 
+# 
+# plot_grid(p1,p2,nrow = 2,align = "v") #%>%
+  # ggsave(filename="figures/figure4.pdf",plot=.,device="pdf",
+  #        width=8,height = 7,units="in")
+
+```
+
+\newpage
+
+*Figure S5.  Receiver operating characteristic curve from random forest models and isotype contributions.*
+Each panel shows the ROC curves for cross-validated random forest models fit to serological measurements taken (A) over 7 days (cvAUC: 0.96), (B) over 14 days (cvAUC: 0.99), (C) over 21 days (cvAUC: 1.00) and over 28 days (cvAUC: 1.00) of after symptom onset of PCR positive cases and pre-pandemic controls. Each blue line is one of ten cross-validated ROC curves for a specific time point. Median relative importance of each serological marker is shown in each bar graph.
+
+```{r, fig.width = 7, fig.height=7.5}
+plot_grid(
+  cv_roc_rfs2[[13]]$fullplot+theme_bw()+theme(panel.grid.minor = element_blank()),
+  cv_roc_rfs2[[14]]$fullplot+theme_bw()+theme(panel.grid.minor = element_blank()),
+  cv_roc_rfs2[[15]]$fullplot+theme_bw()+theme(panel.grid.minor = element_blank()),
+  cv_roc_rfs2[[16]]$fullplot+theme_bw()+theme(panel.grid.minor = element_blank()),
+  ncol=2#,labels=c("A","B","C","D")
+  ) #%>%
+  # ggsave(filename="figures/figure3.pdf",plot=.,device="pdf",
+  #        width=8,height = 8,units="in")
+  
+
+```
+
+\newpage
+
+*Table S2. Parametric estimates of median time to seroconversion for each isotype by different patient characteristics.*
+
+The isotype cut-offs chosen for seroconversion were the maximum concentration (µg/mL) found among pre-pandemic controls (IgG: 0.57, IgM: 2.63, IgA: 2.02). All models assumed that time to event followed a log-normal Distribution. Bootstrap 95% confidence intervals are shown in parentheses.
+
+```{r}
+
+#get datasets in proper fashion
+rater <- cases %>% group_by(id) %>%
+                summarize(count=n(),
+                          max=max(dos,na.rm = TRUE),
+                          rate=max/count
+                          ) 
+cases2 <- cases %>% left_join(rater) %>%
+                filter(rate<28) %>%
+                filter(!is.na(Severity3))
+cases3 <- cases %>% 
+                filter(!(id %in% cases2$id))
+
+# calculate differences in median time to seroconversion
+# bootGenderG <- convertBootstrap(cases2,type = "convert",isotype = "IgG",
+#                                 distribution = "lnorm",form=cbind(TL,TR) ~ gender)
+# bootAgeG <- convertBootstrap(cases2,type = "convert",isotype = "IgG",
+#                              distribution = "lnorm",form=cbind(TL,TR) ~ ageCat)
+# bootSevG <- convertBootstrap(cases2,type = "convert",isotype = "IgG",
+#                              distribution = "lnorm",form=cbind(TL,TR) ~ Severity3)
+# 
+# bootGenderA <- convertBootstrap(cases2,type = "convert",isotype = "IgA",
+#                                 distribution = "lnorm",form=cbind(TL,TR) ~ gender)
+# bootAgeA <- convertBootstrap(cases2,type = "convert",isotype = "IgA",
+#                              distribution = "lnorm",form=cbind(TL,TR) ~ ageCat)
+# bootSevA <- convertBootstrap(cases2,type = "convert",isotype = "IgA",
+#                              distribution = "lnorm",form=cbind(TL,TR) ~ Severity3)
+# 
+# bootGenderM <- convertBootstrap(cases2,type = "convert",isotype = "IgM",
+#                                 distribution = "lnorm",form=cbind(TL,TR) ~ gender)
+# bootAgeM <- convertBootstrap(cases2,type = "convert",isotype = "IgM",
+#                              distribution = "lnorm",form=cbind(TL,TR) ~ ageCat)
+# bootSevM <- convertBootstrap(cases2,type = "convert",isotype = "IgM",
+#                              distribution = "lnorm",form=cbind(TL,TR) ~ Severity3)
+
+
+
+# compareGroups <- bind_rows(
+#             getCIcovariate(bootGenderG,0.5),
+#             getCIcovariate(bootAgeG,0.5),
+#             getCIcovariate(bootSevG,0.5),
+# 
+# 
+#             getCIcovariate(bootGenderA,0.5),
+#             getCIcovariate(bootAgeA,0.5),
+#             getCIcovariate(bootSevA,0.5),
+# 
+# 
+#             getCIcovariate(bootGenderM,0.5),
+#             getCIcovariate(bootAgeM,0.5),
+#             getCIcovariate(bootSevM,0.5)
+# 
+# )
+
+
+# write_rds(compareGroups,"generated_data/compareGroups.rds")
+compareGroups <- read_rds("generated_data/compareGroups.rds")
+
+
+compareGroups1<-compareGroups %>% ungroup()%>%
+        distinct(isotype,variable=ref,`50th percentile (95% CI)`=Baseline) %>%
+        mutate(variable=paste0("   ",variable))
+  
+
+compareGroups2<-compareGroups %>% ungroup()%>%
+        select(isotype,variable,`50th percentile (95% CI)`=Covariate,
+                 `Difference (95% CI)`=Difference) %>%
+        mutate(variable=recode(variable,
+                          genderFemale="   Female",
+                         `ageCat..65.years`="   \u226565 years",
+                         "Severity3Died.due.to.COVID.19"=
+                           "   Died due to COVID-19",
+                         # `Severity2Hospitalized..no.ICU`=
+                         #   "   Hospitalized, no ICU",
+                         `Severity3Hospitalized..required.ICU`=
+                           "   Hospitalized, required ICU"
+                               )  )
+  
+  
+  
+bind_rows(compareGroups1,compareGroups2,
+                       data.frame(
+            variable=rep(c("Sex","Age","Severity"),3),
+            isotype=c("IgG","IgG","IgG",
+                      "IgM","IgM","IgM",
+                      "IgA","IgA","IgA")
+                     ))%>%
+            mutate(
+                  variable=factor(variable,
+                         levels=c(
+                           "Age",
+                           "   <65 years",
+                           "   \u226565 years",
+                           "Sex",
+                           "   Male",
+                           "   Female",
+                           "Severity",
+                           "   Not Hospitalized / Hospitalized, no ICU",
+                           # "   Hospitalized, no ICU",
+                           "   Hospitalized, required ICU",
+                           "   Died due to COVID-19"))
+              
+              
+            ) %>% arrange(isotype,variable) %>%
+  rename(Isotype=isotype,
+         Characteristic=variable
+         )%>%
+  flextable() %>% 
+  merge_v(j=~Isotype) %>%
+  valign(j=~Isotype,valign = "top")%>%
+  autofit()
+            
+
+```
+
+\newpage
+
+*Figure SX. Confusion matrices and out-of-bag error estimates for random forest models.*
+
+```{r, fig.width=8,fig.height=10}
+modelList<- list()
+for (i in 1:4){
+                
+                w <- levels(predData$week)[i]
+                # cat(w,\n)
+                
+                dat <- predData %>% filter(week==w|case==0)
+                
+                ss <- dat %>% filter(case==1) %>% nrow()
+                
+                
+                rf1 <- randomForest(factor(case)~IgG+IgM,
+                                ntree=1500,
+                                data=dat
+                                )
+                 rf2 <- randomForest(factor(case)~IgG+IgA,
+                                ntree=1500,
+                                data=dat
+                                )
+                 rf3 <- randomForest(factor(case)~IgA+IgM,
+                                ntree=1500,
+                                data=dat
+                                )
+                 rf4 <- randomForest(factor(case)~IgG+IgM+IgA,
+                                ntree=1500,
+                                data=dat
+                                )
+                
+                modelList[[4*(i-1)+1]] <-rf1
+                modelList[[4*(i-1)+2]] <-rf2
+                modelList[[4*(i-1)+3]] <-rf3
+                modelList[[4*(i-1)+4]] <-rf4
+                
+}
+
+plot_grid(ggplot(data.frame(week=levels(predData$week)[1]))+
+                          geom_text(x=0.5,y=0.5,
+                                    aes(label=week),
+                                    fontface="bold",
+                                    angle=90
+                                    )+
+                          theme_void(),
+          confusionmatrix(modelList[[1]]),
+          confusionmatrix(modelList[[2]]),
+          confusionmatrix(modelList[[3]]),
+          confusionmatrix(modelList[[4]]),
+          ggplot(data.frame(week=levels(predData$week)[2]))+
+                          geom_text(x=0.5,y=0.5,
+                                    fontface="bold",
+                                    angle=90,
+                                    aes(label=week))+
+                          theme_void(),
+          confusionmatrix(modelList[[5]]),
+          confusionmatrix(modelList[[6]]),
+          confusionmatrix(modelList[[7]]),
+          confusionmatrix(modelList[[8]]), 
+          ggplot(data.frame(week=levels(predData$week)[3]))+
+                          geom_text(x=0.5,y=0.5,
+                                    fontface="bold",
+                                    angle=90,
+                                    aes(label=week))+
+                          theme_void(),
+          confusionmatrix(modelList[[9]]),
+          confusionmatrix(modelList[[10]]),
+          confusionmatrix(modelList[[11]]),
+          confusionmatrix(modelList[[12]]), 
+          ggplot(data.frame(week=levels(predData$week)[4]))+
+                          geom_text(x=0.5,y=0.5,
+                                    fontface="bold",
+                                    angle=90,
+                                    aes(label=week))+
+                          theme_void(),
+          confusionmatrix(modelList[[13]]),
+          confusionmatrix(modelList[[14]]),
+          confusionmatrix(modelList[[15]]),
+          confusionmatrix(modelList[[16]]), 
+          ncol=5,nrow=4,rel_widths = c(0.3,1,1,1,1))         
+
+
+```
+
+
+*Figure SX. Confusion matrices and out-of-bag error estimates for random forest models with downsampled controls.* Controls were downsampled to have the same number of samples as cases for a given timeperiod.
+
+```{r,fig.width=8,fig.height=10}
+
+modelList2<- list()
+for (i in 1:4){
+                
+                w <- levels(predData$week)[i]
+                # cat(w)
+                
+                dat <- predData %>% filter(week==w|case==0)
+                
+                ss <- dat %>% filter(case==1) %>% nrow()
+                
+                
+                rf1 <- randomForest(factor(case)~IgG+IgM,
+                                ntree=1500,
+                                data=dat,
+                                sampsize = rep(ss,2)
+                                )
+                 rf2 <- randomForest(factor(case)~IgG+IgA,
+                                ntree=1500,
+                                data=dat,
+                                sampsize = rep(ss,2)
+                                )
+                 rf3 <- randomForest(factor(case)~IgA+IgM,
+                                ntree=1500,
+                                data=dat,
+                                sampsize = rep(ss,2)
+                                )
+                 rf4 <- randomForest(factor(case)~IgG+IgM+IgA,
+                                ntree=1500,
+                                data=dat,
+                                sampsize = rep(ss,2)
+                                )
+                
+                modelList2[[4*(i-1)+1]] <-rf1
+                modelList2[[4*(i-1)+2]] <-rf2
+                modelList2[[4*(i-1)+3]] <-rf3
+                modelList2[[4*(i-1)+4]] <-rf4
+                
+}
+ 
+plot_grid(ggplot(data.frame(week=levels(predData$week)[1]))+
+                          geom_text(x=0.5,y=0.5,
+                                    aes(label=week),
+                                    fontface="bold",
+                                    angle=90
+                                    )+
+                          theme_void(),
+          confusionmatrix(modelList2[[1]]),
+          confusionmatrix(modelList2[[2]]),
+          confusionmatrix(modelList2[[3]]),
+          confusionmatrix(modelList2[[4]]),
+          ggplot(data.frame(week=levels(predData$week)[2]))+
+                          geom_text(x=0.5,y=0.5,
+                                    fontface="bold",
+                                    angle=90,
+                                    aes(label=week))+
+                          theme_void(),
+          confusionmatrix(modelList2[[5]]),
+          confusionmatrix(modelList2[[6]]),
+          confusionmatrix(modelList2[[7]]),
+          confusionmatrix(modelList2[[8]]), 
+          ggplot(data.frame(week=levels(predData$week)[3]))+
+                          geom_text(x=0.5,y=0.5,
+                                    fontface="bold",
+                                    angle=90,
+                                    aes(label=week))+
+                          theme_void(),
+          confusionmatrix(modelList2[[9]]),
+          confusionmatrix(modelList2[[10]]),
+          confusionmatrix(modelList2[[11]]),
+          confusionmatrix(modelList2[[12]]), 
+          ggplot(data.frame(week=levels(predData$week)[4]))+
+                          geom_text(x=0.5,y=0.5,
+                                    fontface="bold",
+                                    angle=90,
+                                    aes(label=week))+
+                          theme_void(),
+          confusionmatrix(modelList2[[13]]),
+          confusionmatrix(modelList2[[14]]),
+          confusionmatrix(modelList2[[15]]),
+          confusionmatrix(modelList2[[16]]), 
+          ncol=5,nrow=4,rel_widths = c(0.3,1,1,1,1))      
+
+
+
+```
+
+
+
+\newpage
+
+*Table S3. Parametric estimates of median time to seroreversion for each isotype by different patient characteristics.*
+
+The isotype cut-offs chosen for seroreversion were the maximum concentration (µg/mL) found among pre-pandemic controls (IgM: 2.63, IgA: 2.02). All models assumed that time to event followed a log-normal distribution. Bootstrap 95% confidence intervals are shown in parentheses.
+
+```{r}
+# bootRevGenderA <- convertBootstrap(cases2,type = "revert",isotype = "IgA",
+#                                 distribution = "lnorm",form=cbind(TL,TR) ~ gender)
+# bootRevAgeA <- convertBootstrap(cases2,type = "revert",isotype = "IgA",
+#                              distribution = "lnorm",form=cbind(TL,TR) ~ ageCat)
+# bootRevSevA <- convertBootstrap(cases2,type = "revert",isotype = "IgA",
+#                              distribution = "lnorm",form=cbind(TL,TR) ~ Severity3)
+# 
+# bootRevGenderM <- convertBootstrap(cases2,type = "revert",isotype = "IgM",
+#                                 distribution = "lnorm",form=cbind(TL,TR) ~ gender)
+# bootRevAgeM <- convertBootstrap(cases2,type = "revert",isotype = "IgM",
+#                              distribution = "lnorm",form=cbind(TL,TR) ~ ageCat)
+# bootRevSevM <- convertBootstrap(cases2,type = "revert",isotype = "IgM",
+#                              distribution = "lnorm",form=cbind(TL,TR) ~ Severity3)
+# 
+# 
+# 
+# compareGroupsRev <- bind_rows(
+# 
+#             getCIcovariate(bootRevGenderA,0.5),
+#             getCIcovariate(bootRevAgeA,0.5),
+#             getCIcovariate(bootRevSevA,0.5),
+# 
+#             getCIcovariate(bootRevGenderM,0.5),
+#             getCIcovariate(bootRevAgeM,0.5),
+#             getCIcovariate(bootRevSevM,0.5)
+# 
+# )
+
+
+# # write_rds(compareGroupsRev,"generated_data/compareGroupsRev.rds")
+# compareGroupsRev <- read_rds("generated_data/compareGroupsRev.rds")
+# 
+# 
+# #50th percentiles
+# compareGroups1Rev<-compareGroupsRev %>% ungroup()%>%
+#         distinct(isotype,variable=ref,`50th percentile (95% CI)`=Baseline) %>%
+#         mutate(variable=paste0("   ",variable))
+#   
+# 
+# #Differences
+# compareGroups2Rev<-compareGroupsRev %>% ungroup()%>%
+#         select(isotype,variable,`50th percentile (95% CI)`=Covariate,
+#                  `Difference (95% CI)`=Difference) %>%
+#         mutate(variable=recode(variable,
+#                           genderFemale="   Female",
+#                          `ageCat..65.years`="   \u226565 years",
+#                          "Severity3Died.due.to.COVID.19"=
+#                            "   Died due to COVID-19",
+#                          # `Severity2Hospitalized..no.ICU`=
+#                          #   "   Hospitalized, no ICU",
+#                          `Severity3Hospitalized..required.ICU`=
+#                            "   Hospitalized, required ICU"
+#                                )  )
+#   
+#   
+#   
+# bind_rows(compareGroups1Rev,compareGroups2Rev,
+#                        data.frame(
+#             variable=rep(c("Sex","Age","Severity"),2),
+#             isotype=c("IgM","IgM","IgM",
+#                       "IgA","IgA","IgA")
+#                      ))%>%
+#             mutate(
+#                   variable=factor(variable,
+#                          levels=c(
+#                            "Age",
+#                            "   <65 years",
+#                            "   \u226565 years",
+#                            "Sex",
+#                            "   Male",
+#                            "   Female",
+#                            "Severity",
+#                            "   Not Hospitalized / Hospitalized, no ICU",
+#                            # "   Hospitalized, no ICU",
+#                            "   Hospitalized, required ICU",
+#                            "   Died due to COVID-19"))
+#               
+#               
+#             ) %>% arrange(isotype,variable) %>%
+#   rename(Isotype=isotype,
+#          Characteristic=variable
+#          )%>%
+#   flextable() %>% 
+#   merge_v(j=~Isotype) %>%
+#   valign(j=~Isotype,valign = "top")%>%
+#   autofit()
+#             
+
+
+```
+
+**HKU1 Cross-reactivity data**
+
+```{r}
+# #set up cross-reactivity data
+# crossMERS<- predData %>% select(sample,id,case,cohort,dos,IgG=mers_igg,IgA=mers_iga,IgM=mers_igm)
+# crossHKU1<- predData %>% select(sample,id,case,cohort,dos,IgG=hku1_igg,IgA=hku1_iga,IgM=hku1_igm)
+# crossSARS<- predData %>% select(sample,id,case,cohort,dos,IgG=cov1_igg,IgA=cov1_iga,IgM=cov1_igm)   
+# 
+# 
+# #plotting function for controls
+# pControl<- function(data,title) {
+#                 data %>%
+#                                 gather(biomarker,value,-c(sample,dos)) %>%
+#                                 ggplot(aes(x=dos,y=value#,col=biomarker
+#                                 ))+
+#                                 geom_jitter(alpha=0.2,height = 0) +
+#                                 ylab(title)+
+#                                 facet_grid(biomarker~.,switch="y")+ theme_bw()+
+#                                 theme(axis.title.x = element_blank(),
+#                                       axis.text.x = element_blank(),
+#                                       axis.ticks.x = element_blank(),
+#                                       panel.grid.major.x = element_blank(),
+#                                       panel.grid.minor.x = element_blank()
+#                                 )
+#                 
+# }
+# #plotting function for cases
+# pCase2<- function(data) {
+#                 data %>%
+#                                 ggplot(aes(x=dos,y=value,group=id))+
+#                                 geom_point(alpha=0.2) + geom_line(alpha=0.2)+
+#                                 xlab("Days since symptom onset")+
+#                                 scale_x_continuous(breaks = c(0,7,14,21,28,35,42),
+#                                                    limits =c(0,42))+
+#                                 #scale_color_viridis_d(name="Biomarker", option = "D")+
+#                                 #facet_grid(.~biomarker)+
+#                                 theme_bw()+
+#                                 theme(
+#                                                 panel.grid.minor.x = element_blank(),
+#                                                 #axis.title.x = element_blank(),
+#                                                 axis.title.y = element_blank(),
+#                                                 axis.text.y = element_blank(),
+#                                                 axis.ticks.y = element_blank(),
+#                                 )
+# }
+# 
+# 
+# #set up graphs for HKU1 graphs
+# pcontrolG<- crossHKU1 %>%    filter(case==0) %>%
+#                 mutate(dos=1) %>%
+#                 select(sample,IgG,dos) %>%
+#                 pControl("OD Units")+
+#                 # scale_y_continuous(trans="log10",limits = c(.14,3.5))
+#                 scale_y_continuous(trans="log10",limits = c(0.0001,3.5))
+#                    
+# 
+# pcaseG<- crossHKU1 %>%    filter(case==1) %>%
+#                 select(sample,IgG, dos,id) %>%
+#                 gather(biomarker,value,-c(sample,dos,id))%>%
+#                 pCase2()+
+#                 scale_y_continuous( trans="log10",limits = c(0.0001,3.5)
+#                 )
+# 
+# 
+# pcontrolM<- crossHKU1 %>%    filter(case==0) %>%
+#                 mutate(dos=1) %>%
+#                 select(sample,IgM, dos) %>%
+#                 pControl("OD Units")+
+#                 scale_y_continuous(trans="log10",limits = c(0.0001,3.5)
+#                 )
+# 
+# pcaseM<- crossHKU1 %>%    filter(case==1) %>%
+#                 select(sample,IgM, dos,id) %>%
+#                 gather(biomarker,value,-c(sample,dos,id))%>%
+#                 pCase2()+
+#                 scale_y_continuous( trans="log10",limits = c(0.0001,3.5)
+#                 )
+# 
+# pcontrolA<- crossHKU1 %>%    filter(case==0) %>%
+#                 mutate(dos=1) %>%
+#                 select(sample,IgA, dos) %>%
+#                 pControl("OD Units")+
+#                 scale_y_continuous(trans="log10",limits = c(0.0001,3.5)
+#                 )
+# 
+# pcaseA<- crossHKU1 %>%    filter(case==1) %>%
+#                 select(sample,IgA, dos,id) %>%
+#                 gather(biomarker,value,-c(sample,dos,id))%>%
+#                 pCase2()+
+#                 scale_y_continuous( trans="log10",limits = c(0.0001,3.5)
+#                 )
+# 
+# 
+# titlecontrol <- ggdraw() + 
+#                 draw_label(
+#                                 "Pre-Pandemic Controls",
+#                                 x = 0,
+#                                 hjust = -0.25
+#                 ) 
+# 
+# titlecase <- ggdraw() + 
+#                 draw_label(
+#                                 "PCR Positive Cases",
+#                                 x = 0,
+#                                 hjust = -0.5
+#                 ) 
+# 
+# p<-plot_grid(pcontrolG,pcaseG,pcontrolM,pcaseM,pcontrolA,pcaseA,
+#              ncol=2, align = "hv",rel_widths = c(1,3))
+# 
+# title<- plot_grid(titlecontrol,titlecase,rel_widths = c(1,2))
+# 
+# plot_grid(title,p,rel_heights = c(0.1,1),ncol=1)
+
+```
+
+**SARS-CoV-1 Cross-reactivity data**
+
+```{r}
+# pcontrolG<- crossSARS %>%    filter(case==0) %>%
+#                 mutate(dos=1) %>%
+#                 select(sample,IgG,dos) %>%
+#                 pControl("\u03BCg/mL")+
+#                 scale_y_continuous(trans="log10",limits = c(0.015,25)
+#                 )
+# 
+# pcaseG<- crossSARS %>%    filter(case==1) %>%
+#                 select(sample,IgG, dos,id) %>%
+#                 gather(biomarker,value,-c(sample,dos,id))%>%
+#                 pCase2()+
+#                 scale_y_continuous( trans="log10",limits = c(0.015,25)
+#                 )
+# 
+# 
+# pcontrolM<- crossSARS %>%    filter(case==0) %>%
+#                 mutate(dos=1) %>%
+#                 select(sample,IgM, dos) %>%
+#                 pControl("\u03BCg/mL")+
+#                 scale_y_continuous(trans="log10",limits = c(0.015,25)
+#                 )
+# 
+# pcaseM<- crossSARS %>%    filter(case==1) %>%
+#                 select(sample,IgM, dos,id) %>%
+#                 gather(biomarker,value,-c(sample,dos,id))%>%
+#                 pCase2()+
+#                 scale_y_continuous( trans="log10",limits = c(0.015,25)
+#                 )
+# 
+# pcontrolA<- crossSARS %>%    filter(case==0) %>%
+#                 mutate(dos=1) %>%
+#                 select(sample,IgA, dos) %>%
+#                 pControl("\u03BCg/mL")+
+#                 scale_y_continuous(trans="log10",limits = c(0.015,25)
+#                 )
+# 
+# pcaseA<- crossSARS %>%    filter(case==1) %>%
+#                 select(sample,IgA, dos,id) %>%
+#                 gather(biomarker,value,-c(sample,dos,id))%>%
+#                 pCase2()+
+#                 scale_y_continuous( trans="log10",limits = c(0.015,25)
+#                 )
+# 
+# 
+# titlecontrol <- ggdraw() + 
+#                 draw_label(
+#                                 "Pre-Pandemic Controls",
+#                                 x = 0,
+#                                 hjust = -0.25
+#                 ) 
+# 
+# titlecase <- ggdraw() + 
+#                 draw_label(
+#                                 "PCR Positive Cases",
+#                                 x = 0,
+#                                 hjust = -0.5
+#                 ) 
+# 
+# p<-plot_grid(pcontrolG,pcaseG,pcontrolM,pcaseM,pcontrolA,pcaseA,
+#              ncol=2, align = "hv",rel_widths = c(1,3))
+# 
+# title<- plot_grid(titlecontrol,titlecase,rel_widths = c(1,2))
+# 
+# plot_grid(title,p,rel_heights = c(0.1,1),ncol=1)
+
+```
+
+
+**MERS-CoV Cross-reactivity Data**
+
+
+```{r}
+# pcontrolG<- crossMERS %>%    filter(case==0) %>%
+#                 mutate(dos=1) %>%
+#                 select(sample,IgG,dos) %>%
+#                 pControl("OD Units")+
+#                 scale_y_continuous(trans="log10",limits = c(0.0001,3.5)
+#                                    )
+# 
+# pcaseG<- crossMERS %>%    filter(case==1) %>%
+#                 select(sample,IgG, dos,id) %>%
+#                 gather(biomarker,value,-c(sample,dos,id))%>%
+#                 pCase2()+
+#                 scale_y_continuous( trans="log10",limits = c(0.0001,3.5)
+#                                     )
+# 
+# 
+# pcontrolM<- crossMERS %>%    filter(case==0) %>%
+#                 mutate(dos=1) %>%
+#                 select(sample,IgM, dos) %>%
+#                 pControl("OD Units")+
+#                 scale_y_continuous(trans="log10",limits = c(0.0001,3.5)
+#                 )
+# 
+# pcaseM<- crossMERS %>%    filter(case==1) %>%
+#                 select(sample,IgM, dos,id) %>%
+#                 gather(biomarker,value,-c(sample,dos,id))%>%
+#                 pCase2()+
+#                 scale_y_continuous( trans="log10",limits = c(0.0001,3.5)
+#                 )
+# 
+# pcontrolA<- crossMERS %>%    filter(case==0) %>%
+#                 mutate(dos=1) %>%
+#                 select(sample,IgA, dos) %>%
+#                 pControl("OD Units")+
+#                 scale_y_continuous(trans="log10",limits = c(0.0001,3.5)
+#                 )
+# 
+# pcaseA<- crossMERS %>%    filter(case==1) %>%
+#                 select(sample,IgA, dos,id) %>%
+#                 gather(biomarker,value,-c(sample,dos,id))%>%
+#                 pCase2()+
+#                 scale_y_continuous( trans="log10",limits = c(0.0001,3.5)
+#                 )
+# 
+# 
+# titlecontrol <- ggdraw() + 
+#                 draw_label(
+#                                 "Pre-Pandemic Controls",
+#                                 x = 0,
+#                                 hjust = -0.25
+#                 ) 
+# 
+# titlecase <- ggdraw() + 
+#                 draw_label(
+#                                 "PCR Positive Cases",
+#                                 x = 0,
+#                                 hjust = -0.5
+#                 ) 
+# 
+# p<-plot_grid(pcontrolG,pcaseG,pcontrolM,pcaseM,pcontrolA,pcaseA,
+#              ncol=2, align = "hv",rel_widths = c(1,3))
+# 
+# title<- plot_grid(titlecontrol,titlecase,rel_widths = c(1,2))
+# 
+# plot_grid(title,p,rel_heights = c(0.1,1),ncol=1)
+
+```
+
+
+
+

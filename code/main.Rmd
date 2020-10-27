@@ -1,0 +1,742 @@
+---
+title: "Generation of Figures and Tables for the Main Text"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Load datasets and libraries
+
+```{r}
+source("code/tidy_the_data.R")
+
+```
+
+
+
+**Table 1. Individual characteristics of PCR-positive SARS-CoV-2 cases and pre-pandemic controls.**
+
+
+```{r}
+individual %>% group_by(cohort) %>%
+          filter(cohort!="pcrneg")%>%
+          summarize(N=n())
+
+
+
+t1<-individual %>% group_by(cohort) %>%
+          filter(cohort!="pcrneg")%>%
+          summarize(
+                    N=n(),
+                    
+                    #Median Age
+                    medage=round(median(age,na.rm=TRUE)),
+                    Q1age=round(quantile(age,0.25,na.rm=TRUE)),
+                    Q3age=round(quantile(age,0.75,na.rm=TRUE)),
+                    
+                    
+                    Age=NA,
+                    `Median [IQR]`=paste0(medage," [",Q1age,"-",Q3age,"]"),
+
+                    # Age Category
+                    `<65 years`=sum(ageCat=="<65 years",na.rm=TRUE),
+                    `65+ years`=sum(ageCat=="\u2265 65 years",na.rm=TRUE),
+                    #`Missing Age`=sum(is.na(ageCat)),
+                    
+                    `<65 years (%)`=paste0(`<65 years`," (",round(`<65 years`/N*100),")"),
+                    `65+ years (%)`=paste0(`65+ years`," (",round(`65+ years`/N*100),")"),
+                    #`Missing Age (%)`=paste0(`Missing Age`," (",round(`Missing Age`/N*100),")"),
+
+
+                    #Sex
+                    # Male=sum(gender=="Male",na.rm=TRUE),
+                    Female=sum(gender=="Female"),#,na.rm=TRUE),
+                    # `Missing Sex`=sum(is.na(gender)),
+                    # Sex=NA,
+                    # `Male (%)` =paste0(Male," (",round(Male/N*100),")"),
+                    `Female (%)`=paste0(Female," (",round(Female/N*100),")"),
+                    # `Missing Sex (%)` =paste0(`Missing Sex`," (",round(`Missing Sex`/N*100),")"),
+                    
+                    #Race
+                    White=sum(Race==1,na.rm = TRUE),
+                    Black=sum(Race==2,na.rm = TRUE),
+                    Hispanic=sum(Race==6,na.rm = TRUE),
+                    Other=sum(Race %in% c(3,4,5,99),na.rm = TRUE),
+                    Unknown=sum(Race==-1,na.rm = TRUE),
+                    Race=NA,
+
+
+                    `White (%)`=paste0(White," (",round(White/N*100),")"),
+                    `Black (%)`=paste0(Black," (",round(Black/N*100),")"),
+                    `Hispanic (%)`=paste0(Hispanic," (",round(Hispanic/N*100),")"),
+                    `Other (%)`=paste0(Other," (",round(Other/N*100),")"),
+                    `Missing Race (%)`=paste0(Unknown," (",round(Unknown/N*100),")"),
+                    
+                    #Severity
+                    `Not Hospitalized`=sum(Severity=="Not Hospitalized"),
+                    `Hospitalized, no ICU`=sum(
+                      Severity=="Hospitalized, no ICU"),                                              
+                    `Hospitalized, required ICU`=sum(
+                        Severity=="Hospitalized, required ICU"),
+                    `Died due to COVID-19`=sum(Severity=="Died due to COVID-19"),
+                    `Missing Severity`=sum(Severity=="Missing"),
+
+                    Severity=NA,
+                    
+                    `Not Hospitalized (%)`=
+                      paste0(`Not Hospitalized`," (",
+                             round(`Not Hospitalized`/N*100),")"),
+                    `Hospitalized, no ICU (%)`=
+                      paste0(`Hospitalized, no ICU`," (",
+                             round(`Hospitalized, no ICU`/N*100),")"),                                           
+                    `Hospitalized, required ICU (%)`=
+                      paste0(`Hospitalized, required ICU`," (",
+                             round(`Hospitalized, required ICU`/N*100),")"),
+                    `Died due to COVID-19 (%)`=
+                      paste0(`Died due to COVID-19`," (",
+                             round(`Died due to COVID-19`/N*100),")"),
+                    `Missing Severity (%)`=
+                      paste0(`Missing Severity`," (",
+                             round(`Missing Severity`/N*100),")"),
+                    
+                    Immunosuppressed=sum(as.numeric(immunosuppressed)-1,na.rm=TRUE),
+                    `Immunosuppressed (%)`= paste0(Immunosuppressed," (",round(Immunosuppressed/N*100),")"),
+
+                    
+                    ) %>% 
+                    
+                    select(cohort, Age,`Median [IQR]`,`<65 years (%)`,`65+ years (%)`,
+                           #`Missing Age (%)`,
+                           #Sex, `Male (%)`,
+                           `Female (%)`,#`Missing Sex (%)`,
+                           Race,`White (%)`,`Black (%)`,
+                           `Hispanic (%)`,`Other (%)`,
+                           `Missing Race (%)`,
+                           Severity,`Not Hospitalized (%)`,
+                           `Hospitalized, no ICU (%)`,
+                           `Hospitalized, required ICU (%)`,
+                           `Died due to COVID-19 (%)`,
+                           `Missing Severity (%)`,
+                           `Immunosuppressed (%)`) %>%
+                    gather(statistic,value,-cohort) %>%
+                    spread(cohort,value) %>%
+  rename(Characteristic=statistic,
+         `Pre-pandemic Controls\n(N=1548)`=prepandemic,
+         `PCR-positive Cases\n(N=343)`=case,
+         # `PCR-negative Patients\n(N=52)`=pcrneg,
+         ) %>%
+  mutate(Characteristic = factor(Characteristic,
+                                 levels=c("Age","Median [IQR]",
+                                          "<65 years (%)","65+ years (%)",
+                                          #"Missing Age (%)","Sex",
+                                          #"Male (%)",
+                                          "Female (%)",#"Missing Sex (%)",
+                                          "Race","White (%)","Black (%)",
+                                          "Hispanic (%)","Other (%)",
+                                          "Missing Race (%)",
+                                          "Immunosuppressed (%)",
+                                          "Severity","Not Hospitalized (%)",
+                                         "Hospitalized, no ICU (%)",
+                                         "Hospitalized, required ICU (%)",
+                                         "Died due to COVID-19 (%)",
+                                         "Missing Severity (%)"))) %>%
+        arrange(Characteristic)
+
+
+t1%>% flextable() %>% autofit() 
+#Put table into word doc
+
+t1%>% flextable() %>% autofit() %>%
+  print(., preview = "docx")
+
+
+
+```
+
+
+**Fig. 1. Measurement of IgG, IgM, IgA against SARS-CoV-2 spike protein receptor binding domain among pre-pandemic controls and PCR positive cases.**
+
+Each dot represents a unique measurement of an isotype (Row A: IgG, Row B: IgM, Row C: IgA) in pre-pandemic controls (left panels) and PCR positive cases (right panels). The blue line is a loess smooth nonparametric function. Black dashed lines indicate the maximum concentration (μg/mL) found among pre- pandemic controls (IgG: 0.57, IgM: 2.63, IgA: 2.02). Horizontal jitter was introduced into the pre- pandemic controls. The limit of detection (μg/mL) was 0.04 for IgG, 0.28 for IgM, and 0.30 for IgA.
+
+```{r}
+pcontrolG <- predData %>%    filter(case==0) %>%
+                mutate(dos=1) %>%
+                select(sample,IgG, dos) %>%
+                pControl("\u03BCg/mL")+
+                scale_y_continuous(breaks = c(0.1,10,1000),
+                                   labels = c(0.1,10,1000),
+                                   trans="log10",limits = c(0.01,1200))+
+
+                geom_hline(yintercept = 0.57,lty=2,size=0.4)
+
+
+pcaseG <- predData %>%    filter(case==1) %>%
+                select(sample,IgG, dos,id) %>%
+                gather(biomarker,value,-c(sample,dos,id))%>%
+                pCase()+
+                geom_hline(yintercept = 0.57,lty=2,size=0.4)+
+                scale_y_continuous(breaks = c(0.1,10,1000),
+                                   labels = c(0.1,10,1000),
+                                   trans="log10",limits = c(0.01,1200))#+
+                # scale_color_manual("Old Data",values=c("blue","red"))
+
+
+pcontrolM <- predData %>%    filter(case==0) %>%
+                mutate(dos=1) %>%
+                select(sample,IgM, dos) %>%
+                pControl("\u03BCg/mL")+
+                scale_y_continuous(breaks = c(0.1,10,1000),
+                                   labels = c(0.1,10,1000),
+                                   trans="log10",limits = c(0.01,1200))+
+
+                geom_hline(yintercept = 2.63,lty=2,size=0.4)
+
+
+pcaseM <-predData %>%    filter(case==1)  %>%
+                select(sample,IgM, dos,id) %>%
+                gather(biomarker,value,-c(sample,dos,id))%>%
+                pCase()+
+                scale_y_continuous(breaks = c(0.1,10,1000),
+                                   labels = c(0.1,10,1000),
+                                   trans="log10",limits = c(0.01,1200))+
+
+                geom_hline(yintercept = 2.63,lty=2,size=0.4)#+
+                # scale_color_manual("Old Data",values=c("blue","red"))
+
+
+pcontrolA <- predData %>%    filter(case==0) %>%
+                mutate(dos=1) %>%
+                select(sample,IgA, dos) %>%
+                pControl("\u03BCg/mL")+
+                scale_y_continuous(breaks = c(0.1,10,1000),
+                                   labels = c(0.1,10,1000),
+                                   trans="log10",limits = c(0.01,1200))+
+
+                geom_hline(yintercept = 2.02,lty=2,size=0.4)
+
+
+pcaseA <-predData %>%    filter(case==1)  %>%
+                select(sample,IgA, dos,id) %>%
+                gather(biomarker,value,-c(sample,dos,id))%>%
+                pCase()+
+                scale_y_continuous(breaks = c(0.1,10,1000),
+                                   labels = c(0.1,10,1000),
+                                   trans="log10",limits = c(0.01,1200))+
+
+                geom_hline(yintercept = 2.02,lty=2,size=0.4)#+
+                # scale_color_manual("Old Data",values=c("blue","red"))
+
+
+
+
+titlecontrol <- ggdraw() + 
+  draw_label(
+    "Pre-Pandemic Controls",
+    x = 0,
+    hjust = -0.25
+  ) 
+
+titlecase <- ggdraw() + 
+  draw_label(
+    "PCR Positive Cases",
+    x = 0,
+    hjust = -0.5
+  ) 
+
+p<-plot_grid(pcontrolG,pcaseG,pcontrolM,pcaseM,pcontrolA,pcaseA,
+          ncol=2, align = "hv",rel_widths = c(1,3),
+          labels=c("A","","B","","C",""))
+
+title<- plot_grid(titlecontrol,titlecase,rel_widths = c(1,2))
+
+plot_grid(title,p,rel_heights = c(0.1,1),ncol=1) #%>%
+
+
+f1 <- plot_grid(title,p,rel_heights = c(0.1,1),ncol=1) #%>%
+ggsave(filename="figures/figure1.pdf",plot=f1,device="pdf",
+         width=7.5,height = 9,units="in")
+
+
+
+```
+
+
+**Table 2. Predictive accuracy of individual isotypes for classifying controls and cases across time.**
+
+```{r}
+
+# thresholds <- data.frame(biomarker=c("IgG","IgM","IgA"),
+#                          value=c(0.57,2.02,2.63)
+#                          )
+# 
+# 
+# 
+# 
+# 
+# singleSens <- data.frame()
+# 
+# for (w in levels(predData$week)){
+# for (Ig in c("IgG","IgM","IgA")){
+# 
+# thresh <- thresholds %>% filter(biomarker==Ig)
+# 
+#   for (j in thresh$value){
+# 
+#   cat("Week:",w,"Biomarker:",Ig,"Threshold:",j,"\n")
+# 
+#                   cos <- predData %>%
+#                           filter(week==w) %>%
+#                                   bootstrapSensSpec(.,
+#                                         biomarker = Ig,
+#                                         threshold = j,
+#                                         col_of_interest = "case"
+#                   ) %>% mutate(week=w)
+# 
+#                   singleSens <- bind_rows(singleSens,cos)
+# 
+#   }
+# }
+# }
+# 
+# 
+# singleAUC <- data.frame()
+# 
+# for (w in levels(predData$week)){
+# for (Ig in c("IgG","IgM","IgA")){
+# 
+# 
+#   cat("Week:",w,"Biomarker:",Ig,"\n")
+# 
+#                   cos <- predData %>%
+#                           filter(week==w|cohort=="prepandemic") %>%
+#                                   bootstrapAUC(.,
+#                                         biomarker = Ig,
+#                                         col_of_interest = "case"
+#                   ) %>% mutate(week=w)
+# 
+#                   singleAUC <- bind_rows(singleAUC,cos)
+# 
+# 
+# }
+# }
+# 
+# 
+# write_rds(singleSens,"data/generated_data/singlemarker_sensitivity.rds")
+# # singleSens<- read_rds("generated_data/singlemarker_sensitivity.rds")
+# 
+# 
+# #format sensitivity
+# singleSens2 <- singleSens %>% group_by(biomarker,week) %>%
+#                 summarize(avg=mean(sens),
+#                           lower=quantile(sens,0.025),
+#                           upper=quantile(sens,0.975))%>% 
+#                 mutate(Sensitivity=paste0(sprintf("%.2f",avg),
+#                               " (",sprintf("%.2f",lower),
+#                               "-",sprintf("%.2f",upper),")"))%>%
+#                 # mutate(week=factor(week,levels=levels(predData$week))) %>%
+#                 select(biomarker,week,Sensitivity)
+# 
+# NEWsingleAUC2 <- singleAUC%>% group_by(biomarker,week) %>%
+#                 summarize(avg=mean(auc),
+#                           lower=quantile(auc,0.025),
+#                           upper=quantile(auc,0.975))%>% 
+#                 mutate(AUC=paste0(sprintf("%.2f",avg),
+#                               " (",sprintf("%.2f",lower),
+#                               "-",sprintf("%.2f",upper),")"))%>%
+#                 mutate(week=factor(week,levels=levels(predData$week))) %>%
+#                 select(biomarker,week,AUC) %>%
+#                 arrange(biomarker,week)
+# 
+# #create single isotype table  
+# NEWsingleAUC2 %>% left_join(singleSens2) %>%
+#           mutate(week=factor(week,levels=levels(predData$week))) %>%
+#           mutate(biomarker=factor(biomarker,
+#                                    levels= c("IgG","IgA","IgM")))%>%
+#           arrange(biomarker,week) %>%
+#           rename(Isotype=biomarker,
+#                  `Days since symptom onset`=week,
+#                  `AUC (95% CI)`=AUC,
+#                  `Sensitivity (95% CI)`=Sensitivity) %>%
+#         flextable() %>% merge_v(j=~Isotype) %>%
+#                 valign(j=~Isotype,valign = "top")%>%
+#         autofit() %>%
+#   print(., preview = "docx")
+
+
+```
+
+
+
+**Fig. 2. Parametric and nonparametric model estimates of time to seroconversion and seroreversion for each isotype.**
+
+A) The isotype cut-offs chosen for seroconversion were the maximum concentration (μg/mL) found among pre-pandemic controls (IgG: 0.57, IgM: 2.63, IgA: 2.02). The solid line represents the estimated cumulative distribution function of the time to seroconversion or reversion with 100 bootstrapped fits shown as transparent lines. The parametric accelerated failure time models assume a log-normal time-to-event distribution. Nonparametric estimates shown in grey were calculated using the Turnbull method. Only 3 individuals seroreverted for IgG, so no model is included. B) The table indicates the estimated average number of days since onset of symptoms it takes for a percentage of cases to seroconvert or serorevert. Bootstrap 95% confidence intervals are shown in parentheses.
+
+
+```{r}
+
+#get datasets in proper fashion
+rater <- cases %>% group_by(id) %>%
+                summarize(count=n(),
+                          max=max(dos,na.rm = TRUE),
+                          rate=max/count
+                          ) 
+cases2 <- cases %>% left_join(rater) %>%
+                filter(rate<28) %>%
+                filter(!is.na(dos))
+cases3 <- cases %>% left_join(rater) %>%
+                filter(rate>=28)
+
+#this excludes double seroconverters and low quality data
+#in supplement, make sure to include
+Msero <- convertTLTR(cases2,"IgM") #1 convert, #2 revert, #3 doublers
+Asero <- convertTLTR(cases2,"IgA")
+Gsero <- convertTLTR(cases2,"IgG")
+
+assessFit(Msero[[1]]) #lognormal
+assessFit(Asero[[1]]) #lognormal
+assessFit(Gsero[[1]]) #lognormal
+
+assessFit(Msero[[2]]) #lognormal
+assessFit(Asero[[2]]) #lognormal
+
+
+
+#get all 5 parts of the cdf
+
+# CDFbootstraps <- bind_rows(
+#             convertBootstrap(cases2,type = "convert",isotype = "IgG",distribution = "lnorm"),
+#             convertBootstrap(cases2,type = "convert",isotype = "IgA",distribution = "lnorm"),
+#             convertBootstrap(cases2,type = "convert",isotype = "IgM",distribution = "lnorm"),
+#             convertBootstrap(cases2,type = "revert",isotype = "IgA",distribution = "lnorm"),
+#             convertBootstrap(cases2,type = "revert",isotype = "IgM",distribution = "lnorm")
+# )
+
+
+# write_rds(CDFbootstraps,"data/generated_data/CDFbootstraps.rds")
+CDFbootstraps<- read_rds("data/generated_data/CDFbootstraps.rds")
+
+
+days <- 0:126
+
+
+
+#store fits
+MfitConvert <- getFits(Msero[[1]],"IgM")
+GfitConvert <- getFits(Gsero[[1]],"IgG")
+AfitConvert <- getFits(Asero[[1]],"IgA")
+
+MfitRevert <- getFits(Msero[[2]],"IgM")
+# GfitRevert <- getFits(Gsero[[2]],"IgG")
+AfitRevert <- getFits(Asero[[2]],"IgA")
+
+#make non-parametric dfs
+npFitConvert <-bind_rows(MfitConvert[[1]],
+                         GfitConvert[[1]],
+                         AfitConvert[[1]]) %>%
+              mutate(isotype=factor(isotype,
+                                    levels=c("IgM","IgA","IgG")))
+npFitRevert  <-bind_rows(MfitRevert[[1]],
+                         AfitRevert[[1]],
+                         data.frame(isotype="IgG"))%>%
+              mutate(isotype=factor(isotype,
+                                    levels=c("IgM","IgA","IgG")))
+
+#make parametric dfs
+parFitConvert<- bind_rows(MfitConvert[[2]],
+                         GfitConvert[[2]],
+                         AfitConvert[[2]])%>%
+              mutate(isotype=factor(isotype,
+                                    levels=c("IgM","IgA","IgG")))
+parFitRevert <-bind_rows(MfitRevert[[2]],
+                         AfitRevert[[2]],
+                         data.frame(isotype="IgG"))%>%
+              mutate(isotype=factor(isotype,
+                                    levels=c("IgM","IgA","IgG")))
+
+
+# bootstrap fits (not the mle)
+#get bootstraps into df
+
+#for conversion
+bootConvertGraph<-NULL
+
+for (iso in c("IgM","IgG","IgA")){
+  boots <- filter(CDFbootstraps,isotype==iso & type=="convert")
+  
+  for (i in 1:100){
+    bootConvertGraph <- bind_rows(
+      bootConvertGraph,
+      data.frame(
+      x=days,
+      survp=1-plnorm(days,
+               (boots[i,1]),
+               exp(boots[i,2])),
+      samp=boots$sample[i],
+      isotype=iso
+      )
+      
+    )
+      
+}
+
+}
+
+bootConvertGraph<- bootConvertGraph%>%
+              mutate(isotype=factor(isotype,
+                                    levels=c("IgM","IgA","IgG")))
+
+#for reversion
+bootRevertGraph<-NULL
+
+for (iso in c("IgM","IgA")){
+  boots <- filter(CDFbootstraps,isotype==iso & type=="revert")
+  
+  for (i in 1:100){
+    bootRevertGraph <- bind_rows(
+      bootRevertGraph,
+      data.frame(
+      x=days,
+      survp=1-plnorm(days,
+               (boots[i,1]),
+               exp(boots[i,2])),
+      samp=boots$sample[i],
+      isotype=iso
+      )
+      
+    )
+      
+}
+
+}
+
+bootRevertGraph<- bootRevertGraph%>%
+              mutate(isotype=factor(isotype,
+                                    levels=c("IgM","IgA","IgG")))
+
+
+
+#create pplots
+
+f4a <- npFitConvert %>%  
+  arrange(surv,t1) %>% # THIS IS EVERYTHING
+  # mutate(t2=ifelse(t2==Inf,126,t2))%>%
+  ggplot(aes(y=surv))+
+  #nonparametric
+  geom_ribbon(aes(xmin=t1,xmax=t2),
+               fill="grey",col="grey") +
+  #parametric
+  geom_line(inherit.aes = FALSE,
+            data=parFitConvert,
+            aes(x=x,
+                y=1-survp),size=0.5,col="darkblue",
+            )+
+  #bootstrap
+  geom_line(inherit.aes = FALSE,
+            data=bootConvertGraph,
+            aes(x=x,group=samp,
+                y=1-survp),col="darkblue",size=0.5,
+            alpha=0.05
+            )+
+  
+  facet_wrap(.~isotype)+
+  
+  #adjustments
+  theme_bw()+
+  ggtitle("Time to seroconversion")+
+  scale_x_continuous(name="Days since symptom onset",
+                     breaks = seq(0,126,by=28),limits=c(0,126)
+                     )+
+  scale_y_continuous(name="Proportion seropositive",
+                     breaks = c(0,0.05,0.25,0.5,0.75,0.95,1),
+                     limits=c(0,1))+
+  theme(panel.grid.minor = element_blank(),
+        panel.grid.major = element_line(size=0.1))
+
+
+f4b<-npFitRevert %>%
+  ggplot(aes(y=1-surv))+
+  # geom_line(aes(x=t1),col="red",alpha=0.5)+
+  # geom_line(aes(x=t2),col="red",alpha=0.5)+
+   geom_ribbon(aes(xmin=t1,xmax=t2),
+               fill="grey",col="grey") +
+  geom_line(inherit.aes = FALSE,
+            data=parFitRevert,
+            aes(x=x,
+                y=survp),size=0.5,col="red"
+            )+
+  facet_wrap(.~isotype)+
+  
+  #bootstrap
+  geom_line(inherit.aes = FALSE,
+            data=bootRevertGraph,
+            aes(x=x,group=samp,
+                y=survp),col="red",size=0.5,
+            alpha=0.05
+            )+
+  
+  #adjustments
+  theme_bw()+
+  ggtitle("Time to seroreversion")+
+  scale_x_continuous(name="Days since symptom onset",
+                     breaks = seq(0,126,by=28),limits=c(0,126))+
+  scale_y_continuous(name="Proportion seropositive",
+                     breaks = c(0,0.05,0.25,0.5,0.75,0.95,1),
+                     limits=c(0,1))+
+  theme(panel.grid.minor = element_blank(),
+        panel.grid.major = element_line(size=0.1)
+        )
+
+
+plot_grid(f4a,f4b,nrow=1)
+
+f2a <- plot_grid(f4a,f4b,nrow=1) 
+ggsave(filename="figures/figure2.pdf",plot=f2a,device="pdf",
+         width=11,height = 3.5,units="in")
+
+
+
+
+
+percentiletable<-CDFbootstraps %>%
+         mutate(`5th Percentile`=qlnorm(0.05,(mu),exp(log_s)),
+               `25th Percentile`=qlnorm(0.25,(mu),exp(log_s)),
+               `50th Percentile`=qlnorm(0.5,(mu),exp(log_s)),
+               `75th Percentile`=qlnorm(0.75,(mu),exp(log_s)),
+               `95th Percentile`=qlnorm(0.95,(mu),exp(log_s))
+               ) %>%
+        select(-mu,-log_s,-sample) %>%
+        gather(percentile,days,-c(isotype,type))%>%
+        group_by(isotype,type,percentile) %>%
+        summarize(mean=mean(days),
+                              lower=quantile(days,0.025),
+                              upper=quantile(days,0.975)) %>%
+        mutate(cell=paste0(sprintf("%.1f",mean),
+                                    "\n(",sprintf("%.1f",lower),
+                                    "-",sprintf("%.1f",upper),")")) %>%
+        select(Type=type,Isotype=isotype,
+               percentile,cell) %>%
+        spread(percentile,cell) %>% ungroup()%>%
+        mutate(Type=recode(Type,
+                           convert="Seroconversion",
+                           revert="Seroreversion"
+          
+        )) %>%
+        select(Type,Isotype,`5th Percentile`,
+               `25th Percentile`,`50th Percentile`,
+               `75th Percentile`,`95th Percentile`) %>%
+        flextable() %>% 
+        merge_v(j=~Type) %>%
+        valign(j=~Type,valign = "top")%>%
+        autofit()
+
+
+percentiletable %>%
+  print(., preview = "docx")
+
+```
+
+
+**Fig. 3. SARS-CoV-2 pseudovirus neutralization antibody titers in symptomatic PCR positive cases and correlation with anti-RBD IgG responses.**
+
+A) Each point represents a measurement of 50% neutralizing titer (NT50). Lines connect measurements from the same individual and a loess smooth function is shown in blue. B) The overall repeated measures correlation coefficient (r) is shown. Lines represent simple linear models for each time period.
+
+```{r}
+
+neut <- serodata %>% filter(!is.na(`2_NT50`) & !is.na(IgG)) %>%
+                rename(nt50=`2_NT50`)%>%
+                select(id,dos,week,nt50,IgG,IgM,IgA) %>%
+                arrange(id,dos)
+
+
+rmcorr(
+                participant=factor(id),
+                measure1=log(nt50),
+                measure2=log(IgG),
+                neut,
+                CIs = "bootstrap"
+)
+
+rmcorr(
+                participant=factor(id),
+                measure1=log(nt50),
+                measure2=log(IgA),
+                neut,
+                CIs = "bootstrap"
+)
+
+rmcorr(
+                participant=factor(id),
+                measure1=log(nt50),
+                measure2=log(IgM),
+                neut,
+                CIs = "bootstrap"
+)
+
+#how correlation for IgG changes over time
+cor(log(filter(neut,dos<=14)$IgG),
+    log(filter(neut,dos<=14)$nt50))
+cor(log(filter(neut,dos>14 &dos<=28)$IgG),
+    log(filter(neut,dos>14 &dos<=28)$nt50))
+
+rmcorr(participant=factor(id),
+       measure1=log(nt50),
+       measure2=log(IgG),
+       dataset=filter(neut,dos>28),
+       CIs = "bootstrap")
+
+nf1 <- neut %>% #mutate(`2_NT50`=as.numeric(`2_NT50`))%>%
+                #filter(!is.na(`2_NT50`))%>%
+                ggplot(aes(x=dos,y=nt50))+
+                geom_point(shape=16)+
+                geom_line(aes(group=id))+
+                geom_smooth(method="loess",se=FALSE)+
+                scale_y_continuous(name="NT50",
+                                   trans="log10",limits=c(10,4860),
+                                   breaks = c(20,60,180,
+                                                    540,1620,4860)
+                                   
+                                   )+
+                scale_x_continuous(name="Days since symptom onset",
+                                   breaks = c(0,7,14,21,28,35,42,49,
+                                              56,63,70)
+                                   )+
+                theme_bw()+
+                theme(panel.grid.major.x = element_blank(),
+                      panel.grid.minor = element_blank()
+                      )
+
+
+nf2 <-neut %>% mutate(`Time since\nsymptom onset`=
+                  cut(dos,c(-1,14,28,80),labels = c("0-14 days","15-28 days",">28 days")))%>%
+                ggplot(aes(x=IgG,y=nt50,col=`Time since\nsymptom onset`))+
+                geom_point(shape=16)+
+                geom_smooth(method="lm",se=FALSE)+
+                scale_y_continuous(name="NT50",trans="log10",
+                                   limits=c(10,4860),
+                                   breaks = c(20,60,180,
+                                                    540,1620,4860))+
+                scale_x_continuous(name="IgG (\u03BCg/mL)",
+                                   trans="log10")+
+                scale_color_brewer(palette = "Dark2")+
+                theme_bw()+
+                theme(panel.grid.major.x = element_blank(),
+                      panel.grid.minor = element_blank(),
+                      legend.position = c(.8,.2)
+                      )+
+                # geom_text(inherit.aes=FALSE,
+                #           label="hello",x=0.5,y=0.5,col="black")+
+                annotate("text", label = "r = 0.87\n(95% CI: 0.82-0.91)", x = 0.2, y = 1000,
+                         colour = "black", fontface="bold")
+
+
+plot_grid(nf1,nf2,align="h",labels=c("A","B")) %>%
+  ggsave(filename="figures/figure3alt.pdf",plot=.,device="pdf",
+         width=11,height = 4.3,units="in")
+
+
+```
+
+
+
