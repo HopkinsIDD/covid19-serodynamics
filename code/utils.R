@@ -1086,6 +1086,47 @@ confusionmatrix<- function(rf) {
 
 
 
+##'  find bootstrap 95% CI of sensitivity for a given cutoff
+##' @param dat input the prediction data
+##' @param biomarker isotype desired
+##' @param threshold threshold of importance
+##' @param col_of_interest case vs control
+bootstrapAUC<- function(dat,
+                        nsims=1000,
+                        biomarker,
+                        col_of_interest){
+        
+        sens<-NULL; spec<-NULL; auc <- NULL
+        
+        unique_ids <- unique(dat$id) ## unique ids in the dataset
+        obs_indices <- sapply(1:length(unique_ids),
+                              ## list of observations per person
+                              function(x) which(dat$id == unique_ids[x])) 
+        
+        for (i in 1:nsims){
+                if((i %% (nsims/10))==0) cat("Simulation: ",i,"of",nsims,"\n")
+                
+                getIDs<- sample(length(unique_ids),length(unique_ids),replace = TRUE)
+                obs_inds <- sapply(getIDs,function(x) sample(obs_indices[[x]],1))
+                
+                
+                cases<- dat[obs_inds,col_of_interest]
+                titers<- dat[obs_inds,biomarker]
+                
+                auc <- c(auc,getauc(titers,cases))
+                # sens <- c(sens,mean(titers[cases==1]>=threshold))
+                # spec <- c(spec,mean(titers[cases==0]< threshold))
+        }
+        return(data.frame(biomarker,auc))#, sens,spec))
+}
+
+
+getauc <-function(titers,cases){
+        
+        tmp <- ROCR::performance(ROCR::prediction(titers,cases),"auc")
+        tmp@y.values %>% unlist()
+}
+
 
 
 
